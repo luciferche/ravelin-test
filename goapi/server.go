@@ -19,36 +19,34 @@ type Data struct {
 }
 
 type Event struct {
-	ResizeFrom		Dimension `json:"resizeFrom"`
-	ResizeTo			Dimension `json:"resizeTo"`
+	ResizeFrom		Dimension
+	ResizeTo			Dimension
 	WebsiteUrl 		string 		`json:"siteUrl"`
-	Pasted				bool 			`json:"pasted"`
-	Time 					int 			`json:"time"`
-	SessionId 		string 		`json:"sessionId"`
-	FormId 				string 		`json:"formId"`
-	EventType 		string 		`json:"eventType"`
-	eventType 		string
+	Pasted				bool
+	Time 					int
+	SessionId 		string
+	FormId 				string
+	EventType 		string
 }
 type Dimension struct {
-	Width  string 					`jsonn:"width"`
-	Height string						`json:"height"`
+	Width  string
+	Height string
 }
 var clientSessions map[string]*Data
 
 func homeHello(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Use POST request on /Event API endpoint to send Event data")
+	fmt.Fprintf(w, "Use POST request on /api/event API endpoint to send Event data \n Use GET request on /api/session/{session-id} to get full session stored by now")
 }
+
 // updates session and returns flag if there was an error with params
 func updateSession(session *Data, ev Event) bool {
 	
 	switch ev.EventType {
 	case "copyAndPaste":
 		session.CopyAndPaste[ev.FormId] = true
-		// session.WebsiteUrl = ev.WebsiteUrl
 	case "screenResize":
 		session.ResizeFrom = ev.ResizeFrom
 		session.ResizeTo = ev.ResizeTo
-		// session.WebsiteUrl = ev.WebsiteUrl
 	case "timeTaken":
 		session.FormCompletionTime = ev.Time
 	default :
@@ -89,38 +87,39 @@ func printDataStruct(data *Data) {
 	accepts as params event object as json
 	*/
 func createEvent (w http.ResponseWriter, r *http.Request) {
-	var newEvent Event
+	var e Event
 	reqBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		fmt.Fprintf(w, "Enter proper parameters for event")
 	}
-	json.Unmarshal(reqBody, &newEvent)
-	if newEvent.SessionId == "" {
+	json.Unmarshal(reqBody, &e)
+
+	if e.SessionId == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode("Invalid session id")
 		return
 	}
 
-	fmt.Fprintf(w, "Evo ga novi " + newEvent.SessionId)
-	session := clientSessions[newEvent.SessionId]
+	fmt.Fprintf(w, "Evo ga novi " + e.SessionId)
+	session := clientSessions[e.SessionId]
 	if session != nil {
 		fmt.Println("nasao sam te")
 	} else {
-		session = newData(newEvent)
+		session = newData(e)
 	}
-	hasErrors := updateSession(session, newEvent)
+	hasErrors := updateSession(session, e)
 	if hasErrors {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode("Wrong params")
 		return
 	}
-	clientSessions[newEvent.SessionId] = session
+	clientSessions[e.SessionId] = session
 	// printDataStruct(session)
 
 	w.WriteHeader(http.StatusCreated)
 
 	json.NewEncoder(w).Encode("")
-	// json.NewEncoder(w).Encode(newEvent)
+	// json.NewEncoder(w).Encode(e)
 }
 func main() {
 	router := mux.NewRouter().StrictSlash(true)
