@@ -18,7 +18,7 @@ type Data struct {
 	FormCompletionTime int // Seconds
 }
 
-type event struct {
+type Event struct {
 	ResizeFrom		Dimension `json:"resizeFrom"`
 	ResizeTo			Dimension `json:"resizeTo"`
 	WebsiteUrl 		string 		`json:"siteUrl"`
@@ -26,19 +26,20 @@ type event struct {
 	Time 					int 			`json:"time"`
 	SessionId 		string 		`json:"sessionId"`
 	FormId 				string 		`json:"formId"`
-  EventType 		string 		`json:"eventType"`
+	EventType 		string 		`json:"eventType"`
+	eventType 		string
 }
 type Dimension struct {
-	Width  string
-	Height string
+	Width  string 					`jsonn:"width"`
+	Height string						`json:"height"`
 }
 var clientSessions map[string]*Data
 
 func homeHello(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Use POST request on /event API endpoint to send event data")
+	fmt.Fprintf(w, "Use POST request on /Event API endpoint to send Event data")
 }
 // updates session and returns flag if there was an error with params
-func updateSession(session *Data, ev event) bool {
+func updateSession(session *Data, ev Event) bool {
 	
 	switch ev.EventType {
 	case "copyAndPaste":
@@ -51,18 +52,19 @@ func updateSession(session *Data, ev event) bool {
 	case "timeTaken":
 		session.FormCompletionTime = ev.Time
 	default :
+		fmt.Printf("Event type is %v\n", ev.EventType)
 		return true;
 	}
 	return false;
 }
 
 //constructor for mapping event from params to session data
-func newData(ev event) *Data {
+func newData(ev Event) *Data {
 	d := new(Data)
 	d.ResizeTo = ev.ResizeTo
 	d.ResizeFrom = ev.ResizeFrom
-	d.WebsiteUrl = ev.WebsiteUrl 	//change to hash
-	d.CopyAndPaste = make(map[string]bool)
+	d.WebsiteUrl = getHash(ev.WebsiteUrl) 	//change to hash
+	d.CopyAndPaste = make(map[string]bool,3)
 	if ev.Pasted {
 		d.CopyAndPaste[ev.FormId] = true
 	}
@@ -71,30 +73,50 @@ func newData(ev event) *Data {
 	return d
 }
 
+func printDataStruct(data *Data) {
+
+	// res2B, _ := json.Marshal(data)
+	// res3B, _ := json.Marshal(&data)
+	// for x : range data {
+
+	// }
+	fmt.Printf("222- --- %+v\n", data)
+	// fmt.Printf("111- --- %+v\n", res3B)
+}
+
 /*
 	responds to [POST] requests on /event api
 	accepts as params event object as json
 	*/
 func createEvent (w http.ResponseWriter, r *http.Request) {
-	var newEvent event
+	var newEvent Event
 	reqBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		fmt.Fprintf(w, "Enter proper parameters for event")
 	}
 	json.Unmarshal(reqBody, &newEvent)
+	if newEvent.SessionId == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode("Invalid session id")
+		return
+	}
+
 	fmt.Fprintf(w, "Evo ga novi " + newEvent.SessionId)
 	session := clientSessions[newEvent.SessionId]
-	if session.SessionId != "" {
-		err := updateSession(session, newEvent)
-		if err {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode("Wrong params")
-			return
-		}
+	if session != nil {
+		fmt.Println("nasao sam te")
 	} else {
 		session = newData(newEvent)
 	}
-	clientSessions[newEvent.SessionId] = session;
+	hasErrors := updateSession(session, newEvent)
+	if hasErrors {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode("Wrong params")
+		return
+	}
+	clientSessions[newEvent.SessionId] = session
+	// printDataStruct(session)
+
 	w.WriteHeader(http.StatusCreated)
 
 	json.NewEncoder(w).Encode("")
@@ -102,7 +124,17 @@ func createEvent (w http.ResponseWriter, r *http.Request) {
 }
 func main() {
 	router := mux.NewRouter().StrictSlash(true)
+	clientSessions = make(map[string]*Data)
 	router.HandleFunc("/api", homeHello)
 	router.HandleFunc("/api/event", createEvent).Methods("POST")
+	router.HandleFunc("/api/session/{id}", getOneEvent).Methods("GET")
+
 	log.Fatal(http.ListenAndServe(":8080", router))
+}
+
+func getOneEvent(w http.ResponseWriter, r *http.Request) {
+	sessionId := mux.Vars(r)["id"]
+
+	session := clientSessions[sessionId]
+	json.NewEncoder(w).Encode(*session)
 }
