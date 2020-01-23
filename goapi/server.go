@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"errors"
-	"io/ioutil"
+	"strings"
 )
 
 //structure Event used for deserialization of json string into struct we can use
@@ -20,96 +19,117 @@ type Event struct {
 	FormId 				string
 	EventType 		string
 }
+//server struct that will be HTTP request handler
+type server struct{}
 
+// map for storing session events from client
 var clientSessions map[string]*Data
 
-
-// updates session and returns flag if there was an error with params
-func (d *Data) updateSession(ev Event) error {
-	
-	switch ev.EventType {
-	case "copyAndPaste":
-		d.CopyAndPaste[ev.FormId] = true
-	case "screenResize":
-		d.ResizeFrom = ev.ResizeFrom
-		d.ResizeTo = ev.ResizeTo
-	case "timeTaken":
-		d.FormCompletionTime = ev.Time
-		//this means session finished? = submitted
-	default :
-		return errors.New("Event type not supported " + ev.EventType)
-	}
-	return nil
-}
-
-
+//main function for creating a server and assigning request handlers
 func main() {
-	router := mux.NewRouter().StrictSlash(true)
+	s := &server{}
+	http.Handle("/api", s)
 	clientSessions = make(map[string]*Data)
-	router.HandleFunc("/api", homeHello)
-	router.HandleFunc("/api/event", createEvent).Methods("POST")
-	router.HandleFunc("/api/session/{id}", getOneEvent).Methods("GET")
+	http.HandleFunc("/api/events", eventApi)
+	
+	//helper endpoint for testing
+	http.HandleFunc("/api/sessions/{id}", sessionApi)
 
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Fatal(http.ListenAndServe(":8080", nil))
+
 }
 
+/*
+	method on server struct that for serving http requests
+	it needs to implement ServerHTTP function in order to 
+	be considered a Handler interface
+	*/
+func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+    w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		
+		w.Write([]byte(`{"message": "Test project /api endoints to get more info"}`))
+		if r.Method == "GET" {
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(`{"message": "Use POST request on /api/event API endpoint to send Event data \n Use GET request on /api/session/{session-id} to get full session stored by now"`)
+		} else {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			json.NewEncoder(w).Encode(`{"message": "not found"}`)
+		}
+		
+}
 
 /*
   ---------API ENDPOINTS-----------------
-	**/
-//add postEvent
-//	homeHello function responds to the root / request, prints some help
-func homeHello(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Use POST request on /api/event API endpoint to send Event data \n Use GET request on /api/session/{session-id} to get full session stored by now")
-}
-
-
+*/
 /*
 responds to [POST] requests on /event api
 accepts as params event object as json
 */
-func createEvent (w http.ResponseWriter, r *http.Request) {
-	var e Event
-	reqBody, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		fmt.Fprintf(w, "Enter proper parameters for event")
-	}
-	json.Unmarshal(reqBody, &e)
+func eventApi(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method == "POST" {
+		var e Event
+		dec := json.NewDecoder(r.Body)
+		err := dec.Decode(&e)
+		
+		//checking for errors
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(`{"message": "Error parsing JSON"`)
+		}
+		if e.SessionId == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode("Invalid session id")
+		}
 
-	if e.SessionId == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode("Invalid session id")
-		return
-	}
-	s := clientSessions[e.SessionId]
-	if s != nil {
-		fmt.Println("Found session already present")
+		s := clientSessions[e.SessionId]
+		if s == nil {
+			s = NewData(e)
+		}
+
+		err = s.updateSession(e)
+		if err != nil {
+			
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(err)
+		} 
+		clientSessions[e.SessionId] = s
+		if s.isCompleted() {
+			fmt.Println("Form submitted, struct completed")
+			//probably at this point we should clear the session from the map
+			//in full app I presume we would save this data or send it somewhere and then clear it from local storage
+			// clientSessions[s.SessionId] = nil
+		}
+		s.printDataStruct()
+
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode("")
 	} else {
-		s = NewData(e)
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(`{"message": "not supported"}`)
 	}
-	err = s.updateSession(e)
-	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(err)
-		return
-	}
-	clientSessions[e.SessionId] = s
-	if s.FormCompletionTime > 0 {
-		fmt.Println("Form submitted, struct completed")
-	}
-	s.printDataStruct()
-
-	w.WriteHeader(http.StatusCreated)
-
-	json.NewEncoder(w).Encode("")
-	// json.NewEncoder(w).Encode(e)
 }
 
 // helper function I used to check struct and api from postman
-func getOneEvent(w http.ResponseWriter, r *http.Request) {
-	sessionId := mux.Vars(r)["id"]
+func sessionApi(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method == "GET" {
+		sid := strings.TrimPrefix(r.URL.Path, "/api/")
+    if sid == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(`{"message": "Provide proper session id"}`)
+		}
+		s := clientSessions[sid]
+		if s == nil {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(`{"message": "Session with that id not found"}`)
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(*s)
 
-	session := clientSessions[sessionId]
-	json.NewEncoder(w).Encode(*session)
+	} else {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(`{"message": "not supported"}`)		
+	}
 }
