@@ -62,8 +62,9 @@ func newData(ev Event) *Data {
 	d := new(Data)
 	d.ResizeTo = ev.ResizeTo
 	d.ResizeFrom = ev.ResizeFrom
-	fmt.Println("siteurl : %v", ev.WebsiteUrl)
 	d.WebsiteUrl = mainHash(ev.WebsiteUrl) 	//change to hash
+	fmt.Println("HASHED URL : %v", d.WebsiteUrl)
+	
 	d.CopyAndPaste = make(map[string]bool,3)
 	if ev.Pasted {
 		d.CopyAndPaste[ev.FormId] = true
