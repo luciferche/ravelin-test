@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-
+	"reflect"
 	"github.com/gorilla/mux"
 )
 type Data struct {
@@ -49,6 +49,7 @@ func updateSession(session *Data, ev Event) bool {
 		session.ResizeTo = ev.ResizeTo
 	case "timeTaken":
 		session.FormCompletionTime = ev.Time
+		//this means session finished? = submitted
 	default :
 		fmt.Printf("Event type is %v\n", ev.EventType)
 		return true;
@@ -61,7 +62,8 @@ func newData(ev Event) *Data {
 	d := new(Data)
 	d.ResizeTo = ev.ResizeTo
 	d.ResizeFrom = ev.ResizeFrom
-	d.WebsiteUrl = getHash(ev.WebsiteUrl) 	//change to hash
+	fmt.Println("siteurl : %v", ev.WebsiteUrl)
+	d.WebsiteUrl = mainHash(ev.WebsiteUrl) 	//change to hash
 	d.CopyAndPaste = make(map[string]bool,3)
 	if ev.Pasted {
 		d.CopyAndPaste[ev.FormId] = true
@@ -72,14 +74,12 @@ func newData(ev Event) *Data {
 }
 
 func printDataStruct(data *Data) {
+	v := reflect.ValueOf(*data)
+	typeOfS := v.Type()
 
-	// res2B, _ := json.Marshal(data)
-	// res3B, _ := json.Marshal(&data)
-	// for x : range data {
-
-	// }
-	fmt.Printf("222- --- %+v\n", data)
-	// fmt.Printf("111- --- %+v\n", res3B)
+	for i := 0; i< v.NumField(); i++ {
+			fmt.Printf("\t%s\t\t: %v\n", typeOfS.Field(i).Name, v.Field(i).Interface())
+	}
 }
 
 /*
@@ -99,11 +99,9 @@ func createEvent (w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode("Invalid session id")
 		return
 	}
-
-	fmt.Fprintf(w, "Evo ga novi " + e.SessionId)
 	session := clientSessions[e.SessionId]
 	if session != nil {
-		fmt.Println("nasao sam te")
+		fmt.Println("Found session already present")
 	} else {
 		session = newData(e)
 	}
@@ -114,7 +112,10 @@ func createEvent (w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	clientSessions[e.SessionId] = session
-	// printDataStruct(session)
+	if session.FormCompletionTime > 0 {
+		fmt.Println("Form submitted, struct completed")
+	}
+	printDataStruct(session)
 
 	w.WriteHeader(http.StatusCreated)
 
