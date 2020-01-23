@@ -3,90 +3,71 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"reflect"
-	"github.com/gorilla/mux"
+	"errors"
+	"io/ioutil"
 )
-type Data struct {
-	WebsiteUrl         string
-	SessionId          string
-	ResizeFrom         Dimension
-	ResizeTo           Dimension
-	CopyAndPaste       map[string]bool // map[fieldId]true
-	FormCompletionTime int // Seconds
-}
 
+//structure Event used for deserialization of json string into struct we can use
 type Event struct {
 	ResizeFrom		Dimension
 	ResizeTo			Dimension
-	WebsiteUrl 		string 		`json:"siteUrl"`
+	WebsiteUrl 		string
 	Pasted				bool
 	Time 					int
 	SessionId 		string
 	FormId 				string
 	EventType 		string
 }
-type Dimension struct {
-	Width  string
-	Height string
-}
+
 var clientSessions map[string]*Data
 
+
+// updates session and returns flag if there was an error with params
+func (d *Data) updateSession(ev Event) error {
+	
+	switch ev.EventType {
+	case "copyAndPaste":
+		d.CopyAndPaste[ev.FormId] = true
+	case "screenResize":
+		d.ResizeFrom = ev.ResizeFrom
+		d.ResizeTo = ev.ResizeTo
+	case "timeTaken":
+		d.FormCompletionTime = ev.Time
+		//this means session finished? = submitted
+	default :
+		return errors.New("Event type not supported " + ev.EventType)
+	}
+	return nil
+}
+
+
+func main() {
+	router := mux.NewRouter().StrictSlash(true)
+	clientSessions = make(map[string]*Data)
+	router.HandleFunc("/api", homeHello)
+	router.HandleFunc("/api/event", createEvent).Methods("POST")
+	router.HandleFunc("/api/session/{id}", getOneEvent).Methods("GET")
+
+	log.Fatal(http.ListenAndServe(":8080", router))
+}
+
+
+/*
+  ---------API ENDPOINTS-----------------
+	**/
+//add postEvent
+//	homeHello function responds to the root / request, prints some help
 func homeHello(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Use POST request on /api/event API endpoint to send Event data \n Use GET request on /api/session/{session-id} to get full session stored by now")
 }
 
-// updates session and returns flag if there was an error with params
-func updateSession(session *Data, ev Event) bool {
-	
-	switch ev.EventType {
-	case "copyAndPaste":
-		session.CopyAndPaste[ev.FormId] = true
-	case "screenResize":
-		session.ResizeFrom = ev.ResizeFrom
-		session.ResizeTo = ev.ResizeTo
-	case "timeTaken":
-		session.FormCompletionTime = ev.Time
-		//this means session finished? = submitted
-	default :
-		fmt.Printf("Event type is %v\n", ev.EventType)
-		return true;
-	}
-	return false;
-}
-
-//constructor for mapping event from params to session data
-func newData(ev Event) *Data {
-	d := new(Data)
-	d.ResizeTo = ev.ResizeTo
-	d.ResizeFrom = ev.ResizeFrom
-	d.WebsiteUrl = mainHash(ev.WebsiteUrl) 	//change to hash
-	fmt.Println("HASHED URL : %v", d.WebsiteUrl)
-	
-	d.CopyAndPaste = make(map[string]bool,3)
-	if ev.Pasted {
-		d.CopyAndPaste[ev.FormId] = true
-	}
-	d.FormCompletionTime = ev.Time
-	d.SessionId = ev.SessionId
-	return d
-}
-
-func printDataStruct(data *Data) {
-	v := reflect.ValueOf(*data)
-	typeOfS := v.Type()
-
-	for i := 0; i< v.NumField(); i++ {
-			fmt.Printf("\t%s\t\t: %v\n", typeOfS.Field(i).Name, v.Field(i).Interface())
-	}
-}
 
 /*
-	responds to [POST] requests on /event api
-	accepts as params event object as json
-	*/
+responds to [POST] requests on /event api
+accepts as params event object as json
+*/
 func createEvent (w http.ResponseWriter, r *http.Request) {
 	var e Event
 	reqBody, err := ioutil.ReadAll(r.Body)
@@ -100,39 +81,32 @@ func createEvent (w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode("Invalid session id")
 		return
 	}
-	session := clientSessions[e.SessionId]
-	if session != nil {
+	s := clientSessions[e.SessionId]
+	if s != nil {
 		fmt.Println("Found session already present")
 	} else {
-		session = newData(e)
+		s = NewData(e)
 	}
-	hasErrors := updateSession(session, e)
-	if hasErrors {
+	err = s.updateSession(e)
+	if err != nil {
+		log.Fatal(err)
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode("Wrong params")
+		json.NewEncoder(w).Encode(err)
 		return
 	}
-	clientSessions[e.SessionId] = session
-	if session.FormCompletionTime > 0 {
+	clientSessions[e.SessionId] = s
+	if s.FormCompletionTime > 0 {
 		fmt.Println("Form submitted, struct completed")
 	}
-	printDataStruct(session)
+	s.printDataStruct()
 
 	w.WriteHeader(http.StatusCreated)
 
 	json.NewEncoder(w).Encode("")
 	// json.NewEncoder(w).Encode(e)
 }
-func main() {
-	router := mux.NewRouter().StrictSlash(true)
-	clientSessions = make(map[string]*Data)
-	router.HandleFunc("/api", homeHello)
-	router.HandleFunc("/api/event", createEvent).Methods("POST")
-	router.HandleFunc("/api/session/{id}", getOneEvent).Methods("GET")
 
-	log.Fatal(http.ListenAndServe(":8080", router))
-}
-
+// helper function I used to check struct and api from postman
 func getOneEvent(w http.ResponseWriter, r *http.Request) {
 	sessionId := mux.Vars(r)["id"]
 
