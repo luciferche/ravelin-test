@@ -1,4 +1,5 @@
-# ravelin-test
+Ravelin Code Test 
+===============================================
 Repository for the test project for Ravelin
 Project consists of frontend built with JS and a backend server written in Go
 
@@ -72,3 +73,37 @@ type Dimension struct {
 	Width  string
 	Height string
 }
+
+
+Remarks - 
+===============================================
+## Backend - I tried to provide enough information through comments within the files but this is a brief overview:
+App that consists of server object that serves HTTP requests and processes the data according to the specs. 
+Data struct is used for storing all the information about the user session, it has it's own methods for manipulating it's data. 
+Main function just instantiates the servers and assigns handlers for different routes.
+eventsApi function does all the work once `POST /api/events/` is received.
+It first parses params into Event structure.
+Whenever event is received, if it is parsed properly into an Event struct(model for params from request) I store it in
+a map with sessionIds  as keys. Every time new event comes with the same sessionId the session in the map 
+gets updated with newest values based on the `eventType` passed in the params. Once the struct is updated with FormCompletionTime I assume that the form has been submitted and that it is finished so I print the struct and delete the session from the map(even though it wasn't explicitly stated in the requirements, it could give us false data if we assume that session ids are unique)
+In Data structure I use reflection to read out properties of the object and format it out properly with field names.
+
+## Frontend - 
+Plain JS/HTML/CSS used. Axios library used for http requests. Client sessionid generates on page load and gets returned and added to every request fired. I encapsulated eventService functions in an object in order to hide constants, vars and helpers. The app responds to Window resize, Paste in a field and submit button. There is form validation inside HTML but also one before sending the requests.
+
+-
+## What's not working: 
+
+Basically main client app functionality isn't working. `OPTIONS` request is fired under the hood and 
+it doesn't pass CORS check policy. My first problem was writing a json response, and Content-Type should not 
+be specified in response headers on OPTIONS request. But even after fixing that issue(by returning 
+Content-Type: json only on actual POST/GET requests) - requests from the client kept failing with report that 
+Content-Type header is present. 
+However, whenever I tried with Postman everything worked smoothly and I wasn't getting specified header with OPTION request.
+
+I initially developed the backend first using **Postman** to test the api and that's what I focused on prior to switching to FE. 
+On the frontend I think that everything should be working but it isn't unfortunately.
+I tried using standard `XMLHttpRequest` object instead of `axios` library, thinking there might be the problem under the hood with the OPTIONS request but it wasn't the case.
+
+Hashing function isn't finished because I lost too much time on trying to solve problems with `OPTIONS` request.
+So I am sorry to say I am submitting incomplete solution. 

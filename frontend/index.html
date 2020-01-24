@@ -37,10 +37,54 @@ body {
 .form-details .form-control:focus {
   z-index: 2;
 }
+
+/* The snackbar - position it at the bottom and in the middle of the screen */
+#snackbar {
+  visibility: hidden; /* Hidden by default. Visible on click */
+  min-width: 250px; /* Set a default minimum width */
+  margin-left: -125px; /* Divide value of min-width by 2 */
+  background-color: #333; /* Black background color */
+  color: #fff; /* White text color */
+  text-align: center; /* Centered text */
+  border-radius: 2px; /* Rounded borders */
+  padding: 16px; /* Padding */
+  position: fixed; /* Sit on top of the screen */
+  z-index: 1; /* Add a z-index if needed */
+  left: 50%; /* Center the snackbar */
+  bottom: 30px; /* 30px from the bottom */
+}
+
+/* Show the snackbar when clicking on a button (class added with JavaScript) */
+#snackbar.show {
+  visibility: visible; /* Show the snackbar */
+  /* Add animation: Take 0.5 seconds to fade in and out the snackbar.
+  However, delay the fade out process for 2.5 seconds */
+  -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+  animation: fadein 0.5s, fadeout 0.5s 2.5s;
+}
+
+/* Animations to fade the snackbar in and out */
+@-webkit-keyframes fadein {
+  from {bottom: 0; opacity: 0;}
+  to {bottom: 30px; opacity: 1;}
+}
+
+@keyframes fadein {
+  from {bottom: 0; opacity: 0;}
+  to {bottom: 30px; opacity: 1;}
+}
+
+@-webkit-keyframes fadeout {
+  from {bottom: 30px; opacity: 1;}
+  to {bottom: 0; opacity: 0;}
+}
+
+@keyframes fadeout {
+  from {bottom: 30px; opacity: 1;}
+  to {bottom: 0; opacity: 0;}
+}
       </style>
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-
-      <!-- <script src="./require.js" type="application/javascript"></script> -->
       <script src="./eventService.js" type="application/javascript"></script>
   </head>
   <body>
@@ -49,33 +93,34 @@ body {
 
     <div class="container">
 
-      <div id="errorsBlock">
-        <button style="float:right" onclick="clearErrors()">x</button> </div>
-      <form class="form-details" method="post" onsubmit="postUserData()" name="userForm">
+      <form class="form-details" method="post" onsubmit="eventHandlers.postOnSubmit()" name="userForm">
 
         <h2 class="form-details-heading">Details</h2>
 
         <label for="inputEmail" class="sr-only">Email address</label>
         <input type="email" id="inputEmail" class="form-control" 
-        placeholder="Email address" required autofocus>
+        placeholder="Email address" required >
 
         <label for="inputCardNumber" class="sr-only">Card Number</label>
         <input type="text" id="inputCardNumber" class="form-control" 
-        placeholder="Card Number" required>
+        placeholder="Card Number" required >
 
         <label for="inputCVV" class="sr-only">CVV</label>
         <input type="text" id="inputCVV" class="form-control" 
         placeholder="Security Code" required>
 
+        <!-- made the checkbox required -->
         <div class="checkbox">
           <label>
-            <input type="checkbox" value="agree"> Agree to Terms
+            <input type="checkbox" value="agree" required id="cbAgreed"> Agree to Terms
           </label>
         </div>
 
         <button class="btn btn-lg btn-primary btn-block" type="submit">Submit</button>
       </form>
 
+      <div id="snackbar" class="error-block">
+      </div>
     </div> <!-- /container -->
 
   </body>
