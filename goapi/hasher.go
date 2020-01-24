@@ -5,12 +5,10 @@ import (
 	"fmt"
 )
 
-
-
+//function to generate hash for given string
 func gh(s string) string {
 	var h uint64
 	l := len(s)
-	fmt.Println("Length %v - sssss - %v",l, s)
   if l > 0 {
     for i := 0;i < l;i++ {
 			c := s[i]
@@ -18,6 +16,6 @@ func gh(s string) string {
 		}
 	}
 	hs := strconv.FormatUint(h, 16)
-	fmt.Println("HASH of string - %v is: \n %v", s,hs)
+	fmt.Println("Hash for: ",s," --", hs)
   return strconv.FormatUint(h, 16)
 }
