@@ -20,6 +20,8 @@ In Data structure I use reflection to read out properties of the object and form
 Plain JS/HTML/CSS used. Axios library used for http requests. Client sessionid generates on page load and gets returned and added to every request fired. I encapsulated eventService functions in an object in order to hide constants, vars and helpers. The app responds to Window resize, Paste in a field and submit button. There is form validation inside HTML but also one before sending the requests.
 
 ## Remarks
+I lost some time there as well first trying to implement from specification complex widely known alhorithm but that was too much and unnecessary so I opted for writing a custom function based on well known Java string hashing algorithm. I would have done something with bigger complexity but I lost too much time trying to solve problems with ```OPTIONS``` request.
+
 Basically main client app functionality isn't working. When posting events to the server `OPTIONS` request is fired under the hood and it doesn't pass CORS check policy. My first problem was writing a json content ytpe response, and Content-Type should not be specified in response headers on OPTIONS request. But even after fixing that issue(by returning 
 Content-Type: json only on actual POST/GET requests) - requests from the client kept failing with report that 
 Content-Type header is present. 
@@ -29,9 +31,7 @@ I initially developed the backend using **Postman** to test the api and that's w
 On the frontend I worked independently thinking that everything with the api should be working but it isn't unfortunately.
 I tried using standard ```XMLHttpRequest``` object instead of ```axios``` library, thinking there might be the problem under the hood with making the the OPTIONS request but it wasn't the case.
 
-Hashing function isn't finished because I lost too much time on trying to solve problems with ```OPTIONS``` request.
-I lost some time there as well first trying to implement from specification complex widely known alhorithm but that was too much and unnecessary so I opted for writing a custom, simple hash functions that would calculate the hash by multitplyind with big prime number every char and adding it to the previous one. It is well known algorithm but I never got to finish it as I lost too much time trying to solve problems with ```OPTIONS``` request.
-So I am sorry to say I am submitting an incomplete solution. 
+I am sorry to say I am submitting an incomplete solution. 
 
 Ravelin Code Test - Original Requirements
 =========================================
