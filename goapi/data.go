@@ -27,7 +27,6 @@ func NewData(ev Event) *Data {
 	d.ResizeTo = ev.ResizeTo
 	d.ResizeFrom = ev.ResizeFrom
 	d.WebsiteUrl = gh(ev.WebsiteUrl) 	//change to hash
-	fmt.Println("HASHED URL : %v", d.WebsiteUrl)
 	
 	d.CopyAndPaste = make(map[string]bool,3)
 	if ev.Pasted {

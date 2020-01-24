@@ -12,7 +12,7 @@ import (
 type Event struct {
 	ResizeFrom		Dimension
 	ResizeTo			Dimension
-	WebsiteUrl 		string
+	WebsiteUrl 		string		`json:"siteUrl"`
 	Pasted				bool
 	Time 					int
 	SessionId 		string
