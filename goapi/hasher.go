@@ -10,6 +10,7 @@ import (
 func gh(s string) string {
 	var h uint64
 	l := len(s)
+	fmt.Println("Length %v - sssss - %v",l, s)
   if l > 0 {
     for i := 0;i < l;i++ {
 			c := s[i]
