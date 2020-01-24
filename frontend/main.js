@@ -23,11 +23,11 @@
         event: EVENT_TYPES.PASTE, 
         formId: event.target.id
       });
-      sendEvent(eventParams)
+      eventService.postEvent(eventParams)
         .then(() => {
-          console.log('gotov paste')
-          showToast('event sent');
-        });
+          showToast('event paste sent');
+        })
+        .catch((error) => console.error('error sending paste event',error));
     },
     //call post when paste occurs 
     postOnResize: (event) => {
@@ -44,17 +44,22 @@
         },
         event: EVENT_TYPES.PASTE
       });
-      sendEvent(eventParams)
+      eventService.postEvent(eventParams)
         .then(() => {
           console.log('event sent');
-          showToast('sent event');
-          window.removeEventListener("resize", eventHandlers.postOnResize);
+          showToast('sent event')
+            .then(() => {
+              showToast('event resize sent');
+              window.removeEventListener("resize", eventHandlers.postOnResize); 
+            })
+            .catch((error) => console.error('error saving resize event ',error));          
         });
 
     },
 
     postOnSubmit: (event) => {
       //stop control taking us away from the page
+      debugger;
       event.preventDefault();
       errors = validateForm();
       if(errors.length !== 0) {
@@ -66,14 +71,16 @@
         return;
       }
       //form data isn't being sent at this moment
-      console.log('time it took to submit form ', (Date.now() - this.startTime) / 1000)
       var eventParams = prepareEventData({ 
         event: EVENT_TYPES.PASTE, 
         time: (Date.now() - this.startTime) / 1000
       });
-      this.sendEvent(eventParams)
-        .then(() =>  console.log('goooTOVO'))
-        .then(initSession());                           //reset session after submit
+      eventService.postEvent(eventParams)
+        .then(() =>  showToast('Finished with submit and session'))
+        .then(initSession())
+        .catch((error) => {
+          console.error('error sending submit event (timeTaken)', error)
+        });                           //reset session after submit
       
     },
     onStartTyping: (event) => {
@@ -98,7 +105,7 @@
   /* helper for caallinng eventService post method */
   function sendEvent(event) {
     return new Promise(function(resolve, reject){
-      eventService.postPromised(event)
+      eventService.postEvent(event)
         .then(resolve)
         .catch(reject)
     });
@@ -125,6 +132,7 @@
     this.inputEmail.addEventListener('keyup', eventHandlers.onStartTyping);
     this.inputCardNumber.addEventListener('keyup', eventHandlers.onStartTyping);
     this.inputCVV.addEventListener('keyup', eventHandlers.onStartTyping);
+    document.getElementById('formDetails').addEventListener('submit',eventHandlers.postOnSubmit)
     this.snackbar = document.getElementById("snackbar");
   }
 

@@ -85,7 +85,6 @@ body {
 }
       </style>
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-      <script src="./eventService.js" type="application/javascript"></script>
   </head>
   <body>
 
@@ -93,7 +92,7 @@ body {
 
     <div class="container">
 
-      <form class="form-details" method="post" onsubmit="eventHandlers.postOnSubmit()" name="userForm">
+      <form class="form-details" method="post" id="formDetails" name="userForm">
 
         <h2 class="form-details-heading">Details</h2>
 
@@ -125,5 +124,6 @@ body {
 
   </body>
 
+  <script src="./eventService.js" type="application/javascript"></script>
   <script src="./main.js" type="application/javascript"></script>
 </html>

@@ -10,45 +10,6 @@ function EventService() {
   var that = this;
 
 
-  that.postPromised = (params) => {
-    return new Promise(function(resolve, reject){
-      var req = new XMLHttpRequest();
-      req.open('POST', API_URL + POST_EVENT_PATH);
-
-      //Send the proper header information along with the request
-      req.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-
-      req.onreadystatechange = function() { // Call a function when the state changes.
-          if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
-              // Request finished. Do processing here.
-              resolve();
-          }
-      }
-      req.send(JSON.stringify(params));
-      // xhr.send(new Int8Array()); 
-      // xhr.send(document);
-      req.onload = function() {
-        // This is called even on 404 etc
-        // so check the status
-        console.log(req.status + ' - returned from POST', req.readyState)
-        if (req.readyState === XMLHttpRequest.DONE && req.status == 200) {
-          // Resolve the promise with the response text
-          resolve(req.response);
-        }
-        else {
-          // Otherwise reject with the status text
-          // which will hopefully be a meaningful error
-          reject(Error(req.statusText));
-        }
-      };
-
-      // Handle network errors
-      req.onerror = function() {
-        reject(Error("Network Error"));
-      };
-
-    });
-  }
   that.getSessionId = () => {
 
     if(!sessionId) {
