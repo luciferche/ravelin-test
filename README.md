@@ -19,6 +19,7 @@ In Data structure I use reflection to read out properties of the object and form
 ## Frontend
 Plain JS/HTML/CSS used. Axios library used for http requests. Client sessionid generates on page load and gets returned and added to every request fired. I encapsulated eventService functions in an object in order to hide constants, vars and helpers. The app responds to Window resize, Paste in a field and submit button. There is form validation inside HTML but also one before sending the requests.
 
+## Remarks
 Basically main client app functionality isn't working. When posting events to the server `OPTIONS` request is fired under the hood and it doesn't pass CORS check policy. My first problem was writing a json content ytpe response, and Content-Type should not be specified in response headers on OPTIONS request. But even after fixing that issue(by returning 
 Content-Type: json only on actual POST/GET requests) - requests from the client kept failing with report that 
 Content-Type header is present. 
