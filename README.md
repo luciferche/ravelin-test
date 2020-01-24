@@ -5,7 +5,8 @@ Project consists of frontend built with JS and a backend server written in Go
 
 Remarks - 
 ===============================================
-## Backend - I tried to provide enough information through comments within the files but this is a brief overview:
+## Backend
+### I tried to provide enough information through comments within the files but this is a brief overview:
 App that consists of server object that serves HTTP requests and processes the data according to the specs. 
 Data struct is used for storing all the information about the user session, it has it's own methods for manipulating it's data. 
 Main function just instantiates the servers and assigns handlers for different routes.
