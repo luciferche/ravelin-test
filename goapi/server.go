@@ -45,18 +45,14 @@ func main() {
 	be considered a Handler interface
 	*/
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Header().Del("Content-Type")
 		
-		w.Write([]byte(`{"message": "Test project /api endoints to get more info"}`))
-		if r.Method == "GET" {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(`{"message": "Use POST request on /api/event API endpoint to send Event data \n Use GET request on /api/session/{session-id} to get full session stored by now"`)
-		} else {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			json.NewEncoder(w).Encode(`{"message": "not found"}`)
-		}
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		
+		w.WriteHeader(http.StatusOK)
+
+    w.Write([]byte(`{"message": "Use POST request on /api/event API endpoint to send Event data \n Use GET request on /api/session/{session-id} to get full session stored by now"`))
 }
 
 /*
@@ -67,20 +63,23 @@ responds to [POST] requests on /event api
 accepts as params event object as json
 */
 func eventApi(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	// fmt.Println("request %v", r.Method)
+	// w.Header().Del("Content-Type")
+
 	if r.Method == "POST" {
+		w.Header().Set("Content-Type", "application/json")
+
 		var e Event
 		dec := json.NewDecoder(r.Body)
 		err := dec.Decode(&e)
 		
 		//checking for errors
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(`{"message": "Error parsing JSON"`)
+			responseError(w, http.StatusBadRequest, "Error parsing JSON")
 		}
 		if e.SessionId == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode("Invalid session id")
+			responseError(w, http.StatusBadRequest, "Invalid session id")
 		}
 
 		s := clientSessions[e.SessionId]
@@ -90,46 +89,53 @@ func eventApi(w http.ResponseWriter, r *http.Request) {
 
 		err = s.updateSession(e)
 		if err != nil {
-			
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(err)
+			responseError(w, http.StatusBadRequest, err.Error())
 		} 
 		clientSessions[e.SessionId] = s
 		if s.isCompleted() {
 			fmt.Println("Form submitted, struct completed")
+			//this wasn't specified on the requirements but
 			//probably at this point we should clear the session from the map
 			//in full app I presume we would save this data or send it somewhere and then clear it from local storage
-			// clientSessions[s.SessionId] = nil
+			delete(clientSessions, s.SessionId)
 		}
-		s.printDataStruct()
+		s.Print()
 
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode("")
+    w.Write([]byte(""))
 	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(`{"message": "not supported"}`)
+		w.WriteHeader(http.StatusOK)
+    w.Write([]byte(""))
 	}
 }
 
 // helper function I used to check struct and api from postman
 func sessionApi(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	if r.Method == "GET" {
+		w.Header().Set("Content-Type", "application/json")
 		sid := strings.TrimPrefix(r.URL.Path, "/api/")
     if sid == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(`{"message": "Provide proper session id"}`)
+			responseError(w, http.StatusBadRequest, "Invalid session id")
 		}
 		s := clientSessions[sid]
 		if s == nil {
-			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(`{"message": "Session with that id not found"}`)
+			responseError(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
 		}
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(*s)
 
+	} else if r.Method == "OPTIONS" || r.Method == "HEAD" {
+		//for CORS to work properly  OPTIONS has to return OK as well along with with headers
+		w.WriteHeader(http.StatusOK)
+    w.Write([]byte(""))
 	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(`{"message": "not supported"}`)		
+		responseError(w, http.StatusMethodNotAllowed, http.StatusText(http.StatusMethodNotAllowed))
 	}
+}
+
+//helper function to return error response with specified message and StatusCode
+func responseError(w http.ResponseWriter, code int, m string) {
+	w.WriteHeader(code)
+	http.Error(w, m, code)
+
 }

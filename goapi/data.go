@@ -5,6 +5,7 @@ import (
 	"errors"
 )
 
+/* Main data structure for storing session data */
 type Data struct {
 	WebsiteUrl         string
 	SessionId          string
@@ -14,17 +15,18 @@ type Data struct {
 	FormCompletionTime int // Seconds
 }
 
+/* Helper struct for storing dimensions of the screen */
 type Dimension struct {
 	Width  string
 	Height string
 }
 
-//constructor for mapping event from params to session data
+/*	constructor that accepts Event struct with parsed event data  */
 func NewData(ev Event) *Data {
 	d := new(Data)
 	d.ResizeTo = ev.ResizeTo
 	d.ResizeFrom = ev.ResizeFrom
-	d.WebsiteUrl = mainHash(ev.WebsiteUrl) 	//change to hash
+	d.WebsiteUrl = gh(ev.WebsiteUrl) 	//change to hash
 	fmt.Println("HASHED URL : %v", d.WebsiteUrl)
 	
 	d.CopyAndPaste = make(map[string]bool,3)
@@ -36,7 +38,7 @@ func NewData(ev Event) *Data {
 	return d
 }
 
-//helper method for checking whether struct is completed based on FormCompletionTime property value
+/* helper method for checking whether struct is completed based on FormCompletionTime property value */
 func (d *Data) isCompleted() bool {
 	if d.FormCompletionTime > 0 {
 		return true
@@ -45,7 +47,9 @@ func (d *Data) isCompleted() bool {
 }
 
 
-// updates session and returns flag if there was an error with params
+/* 
+	method forupdates session and returns flag if there was an error with params
+*/
 func (d *Data) updateSession(ev Event) error {
 	
 	switch ev.EventType {
@@ -63,8 +67,10 @@ func (d *Data) updateSession(ev Event) error {
 }
 
 
-
-func (d *Data) printDataStruct() {
+/*
+	exported method for printing the structure
+*/
+func (d *Data) Print() {
 	v := reflect.ValueOf(*d)
 	typeOfS := v.Type()
 	fmt.Printf("Data struct: \n")
